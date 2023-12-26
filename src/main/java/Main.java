@@ -8,6 +8,7 @@ import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 
 SymbolLookup user32 = SymbolLookup.libraryLookup("User32", Arena.global());
+SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", Arena.global());
 
 /**
  * <a href="https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-findwindoww">FindWindowW 函数 (winuser.h)</a>
@@ -35,6 +36,22 @@ MethodHandle getWindowThreadProcessId = find(user32, "GetWindowThreadProcessId",
         ValueLayout.ADDRESS
 ));
 
+MethodHandle openProcess = find(kernel32, "OpenProcess", FunctionDescriptor.of(
+        ValueLayout.ADDRESS,
+        ValueLayout.JAVA_INT,
+        ValueLayout.JAVA_INT,
+        ValueLayout.JAVA_INT
+));
+
+MethodHandle readProcessMemory = find(kernel32, "ReadProcessMemory", FunctionDescriptor.of(
+        ValueLayout.JAVA_INT,
+        ValueLayout.ADDRESS,
+        ValueLayout.ADDRESS,
+        ValueLayout.ADDRESS,
+        ValueLayout.JAVA_INT,
+        ValueLayout.ADDRESS
+));
+
 MethodHandle find(SymbolLookup symbolLookup, String functionName, FunctionDescriptor functionDescriptor) {
     return Linker.nativeLinker()
             .downcallHandle(symbolLookup.find(functionName)
@@ -43,12 +60,15 @@ MethodHandle find(SymbolLookup symbolLookup, String functionName, FunctionDescri
 }
 
 MemorySegment L(Arena arena, String str) {
+    var strL = str;
+    if (!strL.endsWith("\0")) {
+        strL = strL.concat("\0");
+    }
+
     // https://stackoverflow.com/questions/66072117/why-does-windows-use-utf-16le
-    var bs = str.getBytes(StandardCharsets.UTF_16LE);
-    var ms = arena.allocate(bs.length + Short.BYTES);
+    var bs = strL.getBytes(StandardCharsets.UTF_16LE);
+    var ms = arena.allocate(bs.length);
     MemorySegment.copy(bs, 0, ms, ValueLayout.JAVA_BYTE, 0, bs.length);
-    // fix: 乱码 UTF_16LE 双字节
-    ms.set(ValueLayout.JAVA_SHORT, bs.length, (short) '\0');
 
     return ms;
 }
@@ -65,7 +85,24 @@ void main() throws Throwable {
 
         var pid = arena.allocate(ValueLayout.JAVA_INT);
         var tid = (MemorySegment) getWindowThreadProcessId.invokeExact(winmineWindow, pid);
-        System.out.println(tid.get(ValueLayout.JAVA_INT, 0));
+        System.out.println(tid);
         System.out.println(pid.get(ValueLayout.JAVA_INT, 0));
+
+        var pHandle = (MemorySegment) openProcess.invokeExact(0x000F_0000 | 0x0010_0000 | 0xFFFF, 0, pid.get(ValueLayout.JAVA_INT, 0));
+        System.out.println(pHandle);
+
+        var hAddress = arena.allocate(ValueLayout.JAVA_INT);
+        var hM = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hAddress, 4, MemorySegment.NULL);
+        System.out.println(STR."hm: \{hM}");
+        System.out.println(hAddress);
+        var h = hAddress.get(ValueLayout.JAVA_INT, 0);
+        System.out.println(h);
+
+        var wAddress = arena.allocate(ValueLayout.JAVA_INT);
+        var wM = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wAddress, 4, MemorySegment.NULL);
+        System.out.println(STR."wm: \{wM}");
+        System.out.println(wAddress);
+        var w = wAddress.get(ValueLayout.JAVA_INT, 0);
+        System.out.println(w);
     }
 }
