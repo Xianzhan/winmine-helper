@@ -75,34 +75,57 @@ MemorySegment L(Arena arena, String str) {
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
-        var winmineWindow = (MemorySegment) findWindowW_MH.invokeExact(MemorySegment.NULL, L(arena, "扫雷"));
-        if (winmineWindow.address() == 0) {
-            System.out.println("扫雷程序未启动");
-            return;
-        } else {
-            System.out.println("扫雷程序已启动");
+        var winmineWindowMS = (MemorySegment) findWindowW_MH.invokeExact(MemorySegment.NULL, L(arena, "扫雷"));
+        if (winmineWindowMS.address() == 0) {
+            System.err.println("扫雷程序未启动，退出助手");
+            System.exit(-1);
+        }
+        System.out.println("扫雷程序已启动");
+
+        var pidMS = arena.allocate(ValueLayout.JAVA_INT);
+        var _ = (MemorySegment) getWindowThreadProcessId.invokeExact(winmineWindowMS, pidMS);
+        if (pidMS.address() == 0) {
+            System.err.println("扫雷获取 pid 失败, 退出助手");
+            System.exit(-2);
+        }
+        var pid = pidMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+
+        final var pHandle = (MemorySegment) openProcess.invokeExact(0x000F_0000 | 0x0010_0000 | 0xFFFF, 0, pid);
+        if (pHandle.address() == 0) {
+            System.err.println("扫雷 HANDLE 获取失败, 退出助手");
+            System.exit(-3);
         }
 
-        var pid = arena.allocate(ValueLayout.JAVA_INT);
-        var tid = (MemorySegment) getWindowThreadProcessId.invokeExact(winmineWindow, pid);
-        System.out.println(tid);
-        System.out.println(pid.get(ValueLayout.JAVA_INT, 0));
+        // 地图基址：0x01005340
+        // 有雷：0x8F
+        // 无墙：0x0F
+        // 墙壁：0x10
+        // 宽：0x1005334
+        // 高：0x1005338
+        // 雷数：0x01005330
+        // 地图基址：0x01005340
 
-        var pHandle = (MemorySegment) openProcess.invokeExact(0x000F_0000 | 0x0010_0000 | 0xFFFF, 0, pid.get(ValueLayout.JAVA_INT, 0));
-        System.out.println(pHandle);
+        var hMS = arena.allocate(ValueLayout.JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hMS, 4, MemorySegment.NULL);
+        var h = hMS.getAtIndex(ValueLayout.JAVA_INT, 0);
 
-        var hAddress = arena.allocate(ValueLayout.JAVA_INT);
-        var hM = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hAddress, 4, MemorySegment.NULL);
-        System.out.println(STR."hm: \{hM}");
-        System.out.println(hAddress);
-        var h = hAddress.get(ValueLayout.JAVA_INT, 0);
-        System.out.println(h);
+        var wMS = arena.allocate(ValueLayout.JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wMS, 4, MemorySegment.NULL);
+        var w = wMS.getAtIndex(ValueLayout.JAVA_INT, 0);
 
-        var wAddress = arena.allocate(ValueLayout.JAVA_INT);
-        var wM = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wAddress, 4, MemorySegment.NULL);
-        System.out.println(STR."wm: \{wM}");
-        System.out.println(wAddress);
-        var w = wAddress.get(ValueLayout.JAVA_INT, 0);
-        System.out.println(w);
+        var nMineMS = arena.allocate(ValueLayout.JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005330), nMineMS, 4, MemorySegment.NULL);
+        var nMine = nMineMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+        System.out.println(STR."行数：\{h}，列数：\{w}，雷数：\{nMine}");
+
+        final var mapSize = 0x360;
+        var mapMS = arena.allocate(mapSize);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, MemorySegment.NULL);
+        for (var i = 0; i < h + 2; i++) {
+            for (var j = 0; j < w + 2; j++) {
+                System.out.printf("%2X|", mapMS.getAtIndex(ValueLayout.JAVA_BYTE, i * 32L + j));
+            }
+            System.out.println();
+        }
     }
 }
