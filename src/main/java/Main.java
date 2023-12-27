@@ -67,14 +67,9 @@ MethodHandle find(SymbolLookup symbolLookup, String functionName, FunctionDescri
             );
 }
 
-MemorySegment L(Arena arena, String str) {
-    var strL = str;
-    if (!strL.endsWith("\0")) {
-        strL = strL.concat("\0");
-    }
-
+MemorySegment winmineL(Arena arena) {
     // https://stackoverflow.com/questions/66072117/why-does-windows-use-utf-16le
-    var bs = strL.getBytes(StandardCharsets.UTF_16LE);
+    var bs = "扫雷\0".getBytes(StandardCharsets.UTF_16LE);
     var ms = arena.allocate(bs.length);
     MemorySegment.copy(bs, 0, ms, ValueLayout.JAVA_BYTE, 0, bs.length);
 
@@ -83,7 +78,7 @@ MemorySegment L(Arena arena, String str) {
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
-        var winmineWindowMS = (MemorySegment) findWindowW_MH.invokeExact(MemorySegment.NULL, L(arena, "扫雷"));
+        var winmineWindowMS = (MemorySegment) findWindowW_MH.invokeExact(MemorySegment.NULL, winmineL(arena));
         if (winmineWindowMS.address() == 0) {
             System.err.println("扫雷程序未启动，退出助手");
             System.exit(-1);
