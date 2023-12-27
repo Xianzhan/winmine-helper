@@ -52,6 +52,14 @@ MethodHandle readProcessMemory = find(kernel32, "ReadProcessMemory", FunctionDes
         ValueLayout.ADDRESS
 ));
 
+MethodHandle postMessageW = find(user32, "PostMessageW", FunctionDescriptor.of(
+        ValueLayout.JAVA_INT,
+        ValueLayout.ADDRESS,
+        ValueLayout.JAVA_INT,
+        ValueLayout.JAVA_INT,
+        ValueLayout.JAVA_INT
+));
+
 MethodHandle find(SymbolLookup symbolLookup, String functionName, FunctionDescriptor functionDescriptor) {
     return Linker.nativeLinker()
             .downcallHandle(symbolLookup.find(functionName)
@@ -123,9 +131,36 @@ void main() throws Throwable {
         var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, MemorySegment.NULL);
         for (var i = 0; i < h + 2; i++) {
             for (var j = 0; j < w + 2; j++) {
-                System.out.printf("%2X|", mapMS.getAtIndex(ValueLayout.JAVA_BYTE, i * 32L + j));
+                var value = mapMS.getAtIndex(ValueLayout.JAVA_BYTE, i * 32L + j);
+                System.out.printf("%2X|", value);
             }
             System.out.println();
+        }
+
+        // 扫雷
+        for (var i = 1; i <= h; i++) {
+            for (var j = 1; j <= w; j++) {
+                var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340 + ((long) j << 5) + i), mapMS, mapSize, MemorySegment.NULL);
+                var value = mapMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+                if ((value & 0x80) == 0x80) {
+                    // 雷
+                    // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
+                    var WM_RBUTTONDOWN = 0x0204;
+                    var WM_RBUTTONUP = 0x0205;
+                    var xPos = i * 16 - 4;
+                    var yPos = j * 16 + 0x27;
+                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONDOWN, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONUP, 0, (yPos << 16) + xPos);
+                } else {
+                    // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
+                    var WM_LBUTTONDOWN = 0x0201;
+                    var WM_LBUTTONUP = 0x0202;
+                    var xPos = i * 16 - 4;
+                    var yPos = j * 16 + 0x27;
+                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONDOWN, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONUP, 0, (yPos << 16) + xPos);
+                }
+            }
         }
     }
 }
