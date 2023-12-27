@@ -137,26 +137,26 @@ void main() throws Throwable {
             System.out.println();
         }
 
+        // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
+        var WM_LBUTTONDOWN = 0x0201;
+        var WM_LBUTTONUP = 0x0202;
+        var WM_RBUTTONDOWN = 0x0204;
+        var WM_RBUTTONUP = 0x0205;
+
         // 扫雷
         for (var i = 1; i <= h; i++) {
             for (var j = 1; j <= w; j++) {
-                var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340 + ((long) j << 5) + i), mapMS, mapSize, MemorySegment.NULL);
+                var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340 + ((long) i << 5) + j), mapMS, mapSize, MemorySegment.NULL);
                 var value = mapMS.getAtIndex(ValueLayout.JAVA_INT, 0);
                 if ((value & 0x80) == 0x80) {
                     // 雷
-                    // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
-                    var WM_RBUTTONDOWN = 0x0204;
-                    var WM_RBUTTONUP = 0x0205;
-                    var xPos = i * 16 - 4;
-                    var yPos = j * 16 + 0x27;
+                    var xPos = j * 16 - 4;
+                    var yPos = i * 16 + 0x27;
                     var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONDOWN, 0, (yPos << 16) + xPos);
                     var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONUP, 0, (yPos << 16) + xPos);
                 } else {
-                    // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
-                    var WM_LBUTTONDOWN = 0x0201;
-                    var WM_LBUTTONUP = 0x0202;
-                    var xPos = i * 16 - 4;
-                    var yPos = j * 16 + 0x27;
+                    var xPos = j * 16 - 4;
+                    var yPos = i * 16 + 0x27;
                     var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONDOWN, 0, (yPos << 16) + xPos);
                     var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONUP, 0, (yPos << 16) + xPos);
                 }
