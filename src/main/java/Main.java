@@ -15,11 +15,11 @@ SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", Arena.global());
  * 检索其类名和窗口名称与指定字符串匹配的顶级窗口的句柄。 此函数不搜索子窗口。 此函数不执行区分大小写的搜索。
  */
 MethodHandle findWindowW_MH = find(user32, "FindWindowW", FunctionDescriptor.of(
-        // 返回值
+        // 如果函数成功，则返回值是具有指定类名称和窗口名称的窗口的句柄。
         ValueLayout.ADDRESS,
-        // className
+        // LPCWSTR lpClassName 类名
         ValueLayout.ADDRESS,
-        // windowsName
+        // LPCWSTR lpWindowName 程序名
         ValueLayout.ADDRESS
 ));
 
@@ -30,33 +30,59 @@ MethodHandle findWindowW_MH = find(user32, "FindWindowW", FunctionDescriptor.of(
 MethodHandle getWindowThreadProcessId = find(user32, "GetWindowThreadProcessId", FunctionDescriptor.of(
         // DWORD 如果函数成功，则返回值是创建窗口的线程的标识符。 如果窗口句柄无效，则返回值为零。 要获得更多的错误信息，请调用 GetLastError。
         ValueLayout.ADDRESS,
-        // HWND 窗口的句柄。
+        // HWND hWnd 窗口的句柄。
         ValueLayout.ADDRESS,
-        // LPDWORD 指向接收进程标识符的变量的指针。 如果此参数不为 NULL， 则 GetWindowThreadProcessId 会将进程的标识符复制到变量;否则，它不会。 如果函数失败，则变量的值保持不变。
+        // LPDWORD lpdwProcessId 指向接收进程标识符的变量的指针。 如果此参数不为 NULL， 则 GetWindowThreadProcessId 会将进程的标识符复制到变量;否则，它不会。 如果函数失败，则变量的值保持不变。
         ValueLayout.ADDRESS
 ));
 
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess">openProcess 函数 (processthreadsapi.h)</a>
+ * 打开现有的本地进程对象。
+ */
 MethodHandle openProcess = find(kernel32, "OpenProcess", FunctionDescriptor.of(
+        // 如果函数成功，则返回值是指定进程的打开句柄。
         ValueLayout.ADDRESS,
+        // DWORD dwDesiredAccess 对进程对象的访问。 根据进程的安全描述符检查此访问权限。
         ValueLayout.JAVA_INT,
+        // BOOL bInheritHandle 如果此值为 TRUE，则此进程创建的进程将继承句柄。
         ValueLayout.JAVA_INT,
+        // DWORD dwProcessId 要打开的本地进程的标识符。
         ValueLayout.JAVA_INT
 ));
 
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/api/memoryapi/nf-memoryapi-readprocessmemory">ReadProcessMemory 函数 (memoryapi.h)</a>
+ */
 MethodHandle readProcessMemory = find(kernel32, "ReadProcessMemory", FunctionDescriptor.of(
+        // 如果该函数成功，则返回值为非零值。
         ValueLayout.JAVA_INT,
+        // HANDLE  hProcess 包含正在读取的内存的进程句柄。
         ValueLayout.ADDRESS,
+        // LPCVOID lpBaseAddress 指向从中读取的指定进程中基址的指针。
         ValueLayout.ADDRESS,
+        // LPVOID  lpBuffer 指向从指定进程的地址空间接收内容的缓冲区的指针。
         ValueLayout.ADDRESS,
+        // SIZE_T  nSize 要从指定进程读取的字节数。
         ValueLayout.JAVA_INT,
+        // SIZE_T  *lpNumberOfBytesRead 指向变量的指针，该变量接收传输到指定缓冲区的字节数。 如果 lpNumberOfBytesRead 为 NULL，则忽略 参数。
         ValueLayout.ADDRESS
 ));
 
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-postmessagew">PostMessageW 函数 (winuser.h)</a>
+ * 将 (帖子) 与创建指定窗口的线程关联的消息队列中，并在不等待线程处理消息的情况下返回消息。
+ */
 MethodHandle postMessageW = find(user32, "PostMessageW", FunctionDescriptor.of(
+        // 如果该函数成功，则返回值为非零值。
         ValueLayout.JAVA_INT,
+        // HWND hWnd 窗口的句柄，其窗口过程是接收消息。
         ValueLayout.ADDRESS,
+        // UINT Msg 要发布的消息。
         ValueLayout.JAVA_INT,
+        // WPARAM wParam 其他的消息特定信息。
         ValueLayout.JAVA_INT,
+        // LPARAM lParam 其他的消息特定信息。
         ValueLayout.JAVA_INT
 ));
 
