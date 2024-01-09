@@ -104,6 +104,30 @@ MemorySegment winmineL(Arena arena) {
     return ms;
 }
 
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/procthread/process-security-and-access-rights">进程对象的所有可能的访问权限。</a>
+ */
+static final int PROCESS_ALL_ACCESS = 0x000F_0000 | 0x0010_0000 | 0xFFFF;
+static final int BOOL_FALSE = 0;
+
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-lbuttondown">按下鼠标左键</a>
+ */
+static final int WM_LBUTTONDOWN = 0x0201;
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-lbuttonup">释放鼠标左键</a>
+ */
+static final int WM_LBUTTONUP = 0x0202;
+/**
+ *<a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-rbuttondown">按下鼠标右键</a>
+ */
+static final int WM_RBUTTONDOWN = 0x0204;
+/**
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-rbuttonup">释放鼠标右键</a>
+ */
+static final int WM_RBUTTONUP = 0x0205;
+
+
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
         var winmineWindowMS = (MemorySegment) findWindowW_MH.invokeExact(NULL, winmineL(arena));
@@ -121,7 +145,7 @@ void main() throws Throwable {
         }
         var pid = pidMS.getAtIndex(ValueLayout.JAVA_INT, 0);
 
-        final var pHandle = (MemorySegment) openProcess.invokeExact(0x000F_0000 | 0x0010_0000 | 0xFFFF, 0, pid);
+        final var pHandle = (MemorySegment) openProcess.invokeExact(PROCESS_ALL_ACCESS, BOOL_FALSE, pid);
         if (NULL.equals(pHandle)) {
             System.err.println("扫雷 HANDLE 获取失败, 退出助手");
             System.exit(-3);
@@ -159,12 +183,6 @@ void main() throws Throwable {
             }
             System.out.println();
         }
-
-        // https://learn.microsoft.com/zh-cn/windows/win32/inputdev/mouse-input-notifications
-        var WM_LBUTTONDOWN = 0x0201;
-        var WM_LBUTTONUP = 0x0202;
-        var WM_RBUTTONDOWN = 0x0204;
-        var WM_RBUTTONUP = 0x0205;
 
         // 扫雷
         for (var i = 1; i <= h; i++) {
