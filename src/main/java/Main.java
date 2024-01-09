@@ -130,6 +130,18 @@ static final int WM_RBUTTONDOWN = 0x0204;
  */
 static final int WM_RBUTTONUP = 0x0205;
 
+/**
+ * 雷区高度基址
+ */
+static final MemorySegment MINE_HIGH_BASE = MemorySegment.ofAddress(0x1005338);
+/**
+ * 雷区宽度基址
+ */
+static final MemorySegment MINE_WIDTH_BASE = MemorySegment.ofAddress(0x1005334);
+/**
+ * 雷区雷数
+ */
+static final MemorySegment MINI_NUM_BASE = MemorySegment.ofAddress(0x01005330);
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
@@ -154,25 +166,16 @@ void main() throws Throwable {
             System.exit(-3);
         }
 
-        // 地图基址：0x01005340
-        // 有雷：0x8F
-        // 无墙：0x0F
-        // 墙壁：0x10
-        // 宽：0x1005334
-        // 高：0x1005338
-        // 雷数：0x01005330
-        // 地图基址：0x01005340
-
         var highMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x1005338), highMS, JAVA_INT.byteSize(), NULL);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINE_HIGH_BASE, highMS, JAVA_INT.byteSize(), NULL);
         var high = highMS.getAtIndex(JAVA_INT, 0);
 
         var widthMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x1005334), widthMS, JAVA_INT.byteSize(), NULL);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINE_WIDTH_BASE, widthMS, JAVA_INT.byteSize(), NULL);
         var width = widthMS.getAtIndex(JAVA_INT, 0);
 
         var nMineMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005330), nMineMS, JAVA_INT.byteSize(), NULL);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINI_NUM_BASE, nMineMS, JAVA_INT.byteSize(), NULL);
         var nMine = nMineMS.getAtIndex(JAVA_INT, 0);
         System.out.println(STR."行数：\{high}，列数：\{width}，雷数：\{nMine}");
 
