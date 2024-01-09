@@ -133,23 +133,23 @@ static final int WM_RBUTTONUP = 0x0205;
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
-        var winmineWindowMS = (MemorySegment) findWindowW_MH.invokeExact(NULL, winmineL(arena));
-        if (NULL.equals(winmineWindowMS)) {
+        var windowHandleMS = (MemorySegment) findWindowW_MH.invokeExact(NULL, winmineL(arena));
+        if (NULL.equals(windowHandleMS)) {
             System.err.println("扫雷程序未启动，退出助手");
             System.exit(-1);
         }
         System.out.println("扫雷程序已启动");
 
         var pidMS = arena.allocate(JAVA_INT);
-        var _ = (MemorySegment) getWindowThreadProcessId.invokeExact(winmineWindowMS, pidMS);
+        var _ = (MemorySegment) getWindowThreadProcessId.invokeExact(windowHandleMS, pidMS);
         if (NULL.equals(pidMS)) {
             System.err.println("扫雷获取 pid 失败, 退出助手");
             System.exit(-2);
         }
         var pid = pidMS.getAtIndex(JAVA_INT, 0);
 
-        final var pHandle = (MemorySegment) openProcess.invokeExact(PROCESS_ALL_ACCESS, BOOL_FALSE, pid);
-        if (NULL.equals(pHandle)) {
+        final var mineHandleMS = (MemorySegment) openProcess.invokeExact(PROCESS_ALL_ACCESS, BOOL_FALSE, pid);
+        if (NULL.equals(mineHandleMS)) {
             System.err.println("扫雷 HANDLE 获取失败, 退出助手");
             System.exit(-3);
         }
@@ -163,46 +163,46 @@ void main() throws Throwable {
         // 雷数：0x01005330
         // 地图基址：0x01005340
 
-        var hMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hMS, JAVA_INT.byteSize(), NULL);
-        var h = hMS.getAtIndex(JAVA_INT, 0);
+        var highMS = arena.allocate(JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x1005338), highMS, JAVA_INT.byteSize(), NULL);
+        var high = highMS.getAtIndex(JAVA_INT, 0);
 
-        var wMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wMS, JAVA_INT.byteSize(), NULL);
-        var w = wMS.getAtIndex(JAVA_INT, 0);
+        var widthMS = arena.allocate(JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x1005334), widthMS, JAVA_INT.byteSize(), NULL);
+        var width = widthMS.getAtIndex(JAVA_INT, 0);
 
         var nMineMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005330), nMineMS, JAVA_INT.byteSize(), NULL);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005330), nMineMS, JAVA_INT.byteSize(), NULL);
         var nMine = nMineMS.getAtIndex(JAVA_INT, 0);
-        System.out.println(STR."行数：\{h}，列数：\{w}，雷数：\{nMine}");
+        System.out.println(STR."行数：\{high}，列数：\{width}，雷数：\{nMine}");
 
         final var mapSize = 0x360L;
         var mapMS = arena.allocate(mapSize);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, NULL);
-        for (var i = 0; i < h + 2; i++) {
-            for (var j = 0; j < w + 2; j++) {
-                var value = mapMS.getAtIndex(JAVA_BYTE, i * 32L + j);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, NULL);
+        for (var h = 0; h < high + 2; h++) {
+            for (var w = 0; w < width + 2; w++) {
+                var value = mapMS.getAtIndex(JAVA_BYTE, h * 32L + w);
                 System.out.printf("%2X|", value);
             }
             System.out.println();
         }
 
         // 扫雷
-        for (var i = 1; i <= h; i++) {
-            for (var j = 1; j <= w; j++) {
-                var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340 + ((long) i << 5) + j), mapMS, mapSize, NULL);
+        for (var h = 1; h <= high; h++) {
+            for (var w = 1; w <= width; w++) {
+                var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005340 + ((long) h << 5) + w), mapMS, mapSize, NULL);
                 var value = mapMS.getAtIndex(JAVA_INT, 0);
                 if ((value & 0x80) == 0x80) {
                     // 雷
-                    var xPos = j * 16 - 4;
-                    var yPos = i * 16 + 0x27;
-                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONDOWN, 0, (yPos << 16) + xPos);
-                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_RBUTTONUP, 0, (yPos << 16) + xPos);
+                    var xPos = w * 16 - 4;
+                    var yPos = h * 16 + 0x27;
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONDOWN, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONUP, 0, (yPos << 16) + xPos);
                 } else {
-                    var xPos = j * 16 - 4;
-                    var yPos = i * 16 + 0x27;
-                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONDOWN, 0, (yPos << 16) + xPos);
-                    var _ = (int) postMessageW.invokeExact(winmineWindowMS, WM_LBUTTONUP, 0, (yPos << 16) + xPos);
+                    var xPos = w * 16 - 4;
+                    var yPos = h * 16 + 0x27;
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONDOWN, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONUP, 0, (yPos << 16) + xPos);
                 }
             }
         }
