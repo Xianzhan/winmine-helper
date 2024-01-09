@@ -3,11 +3,14 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
-import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static java.lang.foreign.ValueLayout.ADDRESS;
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 SymbolLookup user32 = SymbolLookup.libraryLookup("User32", Arena.global());
 SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", Arena.global());
@@ -18,11 +21,11 @@ SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", Arena.global());
  */
 MethodHandle findWindowW_MH = find(user32, "FindWindowW", FunctionDescriptor.of(
         // 如果函数成功，则返回值是具有指定类名称和窗口名称的窗口的句柄。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // LPCWSTR lpClassName 类名
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // LPCWSTR lpWindowName 程序名
-        ValueLayout.ADDRESS
+        ADDRESS
 ));
 
 /**
@@ -31,11 +34,11 @@ MethodHandle findWindowW_MH = find(user32, "FindWindowW", FunctionDescriptor.of(
  */
 MethodHandle getWindowThreadProcessId = find(user32, "GetWindowThreadProcessId", FunctionDescriptor.of(
         // DWORD 如果函数成功，则返回值是创建窗口的线程的标识符。 如果窗口句柄无效，则返回值为零。 要获得更多的错误信息，请调用 GetLastError。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // HWND hWnd 窗口的句柄。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // LPDWORD lpdwProcessId 指向接收进程标识符的变量的指针。 如果此参数不为 NULL， 则 GetWindowThreadProcessId 会将进程的标识符复制到变量;否则，它不会。 如果函数失败，则变量的值保持不变。
-        ValueLayout.ADDRESS
+        ADDRESS
 ));
 
 /**
@@ -44,13 +47,13 @@ MethodHandle getWindowThreadProcessId = find(user32, "GetWindowThreadProcessId",
  */
 MethodHandle openProcess = find(kernel32, "OpenProcess", FunctionDescriptor.of(
         // 如果函数成功，则返回值是指定进程的打开句柄。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // DWORD dwDesiredAccess 对进程对象的访问。 根据进程的安全描述符检查此访问权限。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // BOOL bInheritHandle 如果此值为 TRUE，则此进程创建的进程将继承句柄。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // DWORD dwProcessId 要打开的本地进程的标识符。
-        ValueLayout.JAVA_INT
+        JAVA_INT
 ));
 
 /**
@@ -58,17 +61,17 @@ MethodHandle openProcess = find(kernel32, "OpenProcess", FunctionDescriptor.of(
  */
 MethodHandle readProcessMemory = find(kernel32, "ReadProcessMemory", FunctionDescriptor.of(
         // 如果该函数成功，则返回值为非零值。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // HANDLE  hProcess 包含正在读取的内存的进程句柄。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // LPCVOID lpBaseAddress 指向从中读取的指定进程中基址的指针。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // LPVOID  lpBuffer 指向从指定进程的地址空间接收内容的缓冲区的指针。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // SIZE_T  nSize 要从指定进程读取的字节数。
-        ValueLayout.JAVA_INT,
+        JAVA_LONG,
         // SIZE_T  *lpNumberOfBytesRead 指向变量的指针，该变量接收传输到指定缓冲区的字节数。 如果 lpNumberOfBytesRead 为 NULL，则忽略 参数。
-        ValueLayout.ADDRESS
+        ADDRESS
 ));
 
 /**
@@ -77,15 +80,15 @@ MethodHandle readProcessMemory = find(kernel32, "ReadProcessMemory", FunctionDes
  */
 MethodHandle postMessageW = find(user32, "PostMessageW", FunctionDescriptor.of(
         // 如果该函数成功，则返回值为非零值。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // HWND hWnd 窗口的句柄，其窗口过程是接收消息。
-        ValueLayout.ADDRESS,
+        ADDRESS,
         // UINT Msg 要发布的消息。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // WPARAM wParam 其他的消息特定信息。
-        ValueLayout.JAVA_INT,
+        JAVA_INT,
         // LPARAM lParam 其他的消息特定信息。
-        ValueLayout.JAVA_INT
+        JAVA_INT
 ));
 
 MethodHandle find(SymbolLookup symbolLookup, String functionName, FunctionDescriptor functionDescriptor) {
@@ -99,7 +102,7 @@ MemorySegment winmineL(Arena arena) {
     // https://stackoverflow.com/questions/66072117/why-does-windows-use-utf-16le
     var bs = "扫雷\0".getBytes(StandardCharsets.UTF_16LE);
     var ms = arena.allocate(bs.length);
-    MemorySegment.copy(bs, 0, ms, ValueLayout.JAVA_BYTE, 0, bs.length);
+    MemorySegment.copy(bs, 0, ms, JAVA_BYTE, 0, bs.length);
 
     return ms;
 }
@@ -119,7 +122,7 @@ static final int WM_LBUTTONDOWN = 0x0201;
  */
 static final int WM_LBUTTONUP = 0x0202;
 /**
- *<a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-rbuttondown">按下鼠标右键</a>
+ * <a href="https://learn.microsoft.com/zh-cn/windows/win32/inputdev/wm-rbuttondown">按下鼠标右键</a>
  */
 static final int WM_RBUTTONDOWN = 0x0204;
 /**
@@ -137,13 +140,13 @@ void main() throws Throwable {
         }
         System.out.println("扫雷程序已启动");
 
-        var pidMS = arena.allocate(ValueLayout.JAVA_INT);
+        var pidMS = arena.allocate(JAVA_INT);
         var _ = (MemorySegment) getWindowThreadProcessId.invokeExact(winmineWindowMS, pidMS);
         if (NULL.equals(pidMS)) {
             System.err.println("扫雷获取 pid 失败, 退出助手");
             System.exit(-2);
         }
-        var pid = pidMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+        var pid = pidMS.getAtIndex(JAVA_INT, 0);
 
         final var pHandle = (MemorySegment) openProcess.invokeExact(PROCESS_ALL_ACCESS, BOOL_FALSE, pid);
         if (NULL.equals(pHandle)) {
@@ -160,25 +163,25 @@ void main() throws Throwable {
         // 雷数：0x01005330
         // 地图基址：0x01005340
 
-        var hMS = arena.allocate(ValueLayout.JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hMS, 4, NULL);
-        var h = hMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+        var hMS = arena.allocate(JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005338), hMS, JAVA_INT.byteSize(), NULL);
+        var h = hMS.getAtIndex(JAVA_INT, 0);
 
-        var wMS = arena.allocate(ValueLayout.JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wMS, 4, NULL);
-        var w = wMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+        var wMS = arena.allocate(JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x1005334), wMS, JAVA_INT.byteSize(), NULL);
+        var w = wMS.getAtIndex(JAVA_INT, 0);
 
-        var nMineMS = arena.allocate(ValueLayout.JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005330), nMineMS, 4, NULL);
-        var nMine = nMineMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+        var nMineMS = arena.allocate(JAVA_INT);
+        var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005330), nMineMS, JAVA_INT.byteSize(), NULL);
+        var nMine = nMineMS.getAtIndex(JAVA_INT, 0);
         System.out.println(STR."行数：\{h}，列数：\{w}，雷数：\{nMine}");
 
-        final var mapSize = 0x360;
+        final var mapSize = 0x360L;
         var mapMS = arena.allocate(mapSize);
         var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, NULL);
         for (var i = 0; i < h + 2; i++) {
             for (var j = 0; j < w + 2; j++) {
-                var value = mapMS.getAtIndex(ValueLayout.JAVA_BYTE, i * 32L + j);
+                var value = mapMS.getAtIndex(JAVA_BYTE, i * 32L + j);
                 System.out.printf("%2X|", value);
             }
             System.out.println();
@@ -188,7 +191,7 @@ void main() throws Throwable {
         for (var i = 1; i <= h; i++) {
             for (var j = 1; j <= w; j++) {
                 var _ = (int) readProcessMemory.invokeExact(pHandle, MemorySegment.ofAddress(0x01005340 + ((long) i << 5) + j), mapMS, mapSize, NULL);
-                var value = mapMS.getAtIndex(ValueLayout.JAVA_INT, 0);
+                var value = mapMS.getAtIndex(JAVA_INT, 0);
                 if ((value & 0x80) == 0x80) {
                     // 雷
                     var xPos = j * 16 - 4;
