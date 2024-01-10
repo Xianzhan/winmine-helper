@@ -139,9 +139,36 @@ static final MemorySegment MINE_HIGH_BASE = MemorySegment.ofAddress(0x1005338);
  */
 static final MemorySegment MINE_WIDTH_BASE = MemorySegment.ofAddress(0x1005334);
 /**
- * 雷区雷数
+ * 雷区雷数基址
  */
-static final MemorySegment MINI_NUM_BASE = MemorySegment.ofAddress(0x01005330);
+static final MemorySegment MINE_NUM_BASE = MemorySegment.ofAddress(0x01005330);
+/**
+ * 雷区第一个格子基址
+ */
+static final MemorySegment MINE_FIRST_BASE = MemorySegment.ofAddress(0x01005361);
+
+/**
+ * 雷区每行长度
+ */
+static final long LEN_PER_ROW = 32L;
+
+/**
+ * 雷值
+ */
+static final byte MINE_VALUE = (byte) 0x8F;
+
+/**
+ * 雷区地图 X 基础坐标
+ */
+static final int MINE_X_POS_BASE = 12 + 2;
+/**
+ * 雷区地图 Y 基础坐标
+ */
+static final int MINE_Y_POS_BASE = 54 + 2;
+/**
+ * 雷区格子宽度
+ */
+static final int MINE_GRID_WIDTH = 16;
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
@@ -175,37 +202,37 @@ void main() throws Throwable {
         var width = widthMS.getAtIndex(JAVA_INT, 0);
 
         var nMineMS = arena.allocate(JAVA_INT);
-        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINI_NUM_BASE, nMineMS, JAVA_INT.byteSize(), NULL);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINE_NUM_BASE, nMineMS, JAVA_INT.byteSize(), NULL);
         var nMine = nMineMS.getAtIndex(JAVA_INT, 0);
-        System.out.println(STR."行数：\{high}，列数：\{width}，雷数：\{nMine}");
+        System.out.println(STR."PID: \{pid}, 行数(高)：\{high}，列数(宽)：\{width}，雷数：\{nMine}");
 
-        final var mapSize = 0x360L;
+        final var mapSize = LEN_PER_ROW * high;
         var mapMS = arena.allocate(mapSize);
-        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005340), mapMS, mapSize, NULL);
-        for (var h = 0; h < high + 2; h++) {
-            for (var w = 0; w < width + 2; w++) {
-                var value = mapMS.getAtIndex(JAVA_BYTE, h * 32L + w);
-                System.out.printf("%2X|", value);
+        var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINE_FIRST_BASE, mapMS, mapSize, NULL);
+        var map = mapMS.toArray(JAVA_BYTE);
+        for (var h = 0; h < high; h++) {
+            for (var w = 0; w < width; w++) {
+                var value = map[(int) (h * LEN_PER_ROW + w)];
+                System.out.print(MINE_VALUE == value ? 'X' : 'O');
             }
             System.out.println();
         }
 
         // 扫雷
-        for (var h = 1; h <= high; h++) {
-            for (var w = 1; w <= width; w++) {
-                var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MemorySegment.ofAddress(0x01005340 + ((long) h << 5) + w), mapMS, mapSize, NULL);
-                var value = mapMS.getAtIndex(JAVA_INT, 0);
-                if ((value & 0x80) == 0x80) {
+        for (var h = 0; h < high; h++) {
+            for (var w = 0; w < width; w++) {
+                var xPos = MINE_X_POS_BASE + w * MINE_GRID_WIDTH;
+                var yPos = MINE_Y_POS_BASE + h * MINE_GRID_WIDTH;
+                var lParam = (yPos << 16) + xPos;
+
+                var value = map[(int) (h * LEN_PER_ROW + w)];
+                if (MINE_VALUE == value) {
                     // 雷
-                    var xPos = w * 16 - 4;
-                    var yPos = h * 16 + 0x27;
-                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONDOWN, 0, (yPos << 16) + xPos);
-                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONUP, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONDOWN, 0, lParam);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_RBUTTONUP, 0, lParam);
                 } else {
-                    var xPos = w * 16 - 4;
-                    var yPos = h * 16 + 0x27;
-                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONDOWN, 0, (yPos << 16) + xPos);
-                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONUP, 0, (yPos << 16) + xPos);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONDOWN, 0, lParam);
+                    var _ = (int) postMessageW.invokeExact(windowHandleMS, WM_LBUTTONUP, 0, lParam);
                 }
             }
         }
