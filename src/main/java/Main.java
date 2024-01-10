@@ -85,9 +85,9 @@ MethodHandle postMessageW = find(user32, "PostMessageW", FunctionDescriptor.of(
         ADDRESS,
         // UINT Msg 要发布的消息。
         JAVA_INT,
-        // WPARAM wParam 其他的消息特定信息。
+        // WPARAM wParam 其他的消息特定信息。shift/ctrl 键信息
         JAVA_INT,
-        // LPARAM lParam 其他的消息特定信息。
+        // LPARAM lParam 其他的消息特定信息。高位屏幕 y 坐标, 低位屏幕 x 坐标
         JAVA_INT
 ));
 
