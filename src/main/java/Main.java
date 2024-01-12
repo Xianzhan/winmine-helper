@@ -160,15 +160,21 @@ static final byte MINE_VALUE = (byte) 0x8F;
 /**
  * 雷区地图 X 基础坐标
  */
-static final int MINE_X_POS_BASE = 12 + 2;
+static final int MINE_X_POS_BASE = 19;
 /**
  * 雷区地图 Y 基础坐标
  */
-static final int MINE_Y_POS_BASE = 54 + 2;
+static final int MINE_Y_POS_BASE = 62;
 /**
  * 雷区格子宽度
  */
 static final int MINE_GRID_WIDTH = 16;
+
+static final int SHIFT = 16;
+/**
+ * 屏幕缩放比例
+ */
+static final double SCALE = 1;
 
 void main() throws Throwable {
     try (var arena = Arena.ofConfined()) {
@@ -204,7 +210,7 @@ void main() throws Throwable {
         var nMineMS = arena.allocate(JAVA_INT);
         var _ = (int) readProcessMemory.invokeExact(mineHandleMS, MINE_NUM_BASE, nMineMS, JAVA_INT.byteSize(), NULL);
         var nMine = nMineMS.getAtIndex(JAVA_INT, 0);
-        System.out.println(STR."PID: \{pid}, 行数(高)：\{high}，列数(宽)：\{width}，雷数：\{nMine}");
+        System.out.println(STR."PID: \{pid}, 屏幕缩放比例：\{SCALE} 行数(高)：\{high}，列数(宽)：\{width}，雷数：\{nMine}");
 
         final var mapSize = LEN_PER_ROW * high;
         var mapMS = arena.allocate(mapSize);
@@ -221,9 +227,9 @@ void main() throws Throwable {
         // 扫雷
         for (var h = 0; h < high; h++) {
             for (var w = 0; w < width; w++) {
-                var xPos = MINE_X_POS_BASE + w * MINE_GRID_WIDTH;
-                var yPos = MINE_Y_POS_BASE + h * MINE_GRID_WIDTH;
-                var lParam = (yPos << 16) + xPos;
+                var xPos = (int) ((MINE_X_POS_BASE + w * MINE_GRID_WIDTH) * SCALE);
+                var yPos = (int) ((MINE_Y_POS_BASE + h * MINE_GRID_WIDTH) * SCALE);
+                var lParam = (yPos << SHIFT) + xPos;
 
                 var value = map[(int) (h * LEN_PER_ROW + w)];
                 if (MINE_VALUE == value) {
