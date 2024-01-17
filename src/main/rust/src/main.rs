@@ -1,10 +1,13 @@
-use std::process;
+use std::{ffi::c_void, mem::size_of, process, ptr};
 
 use windows::{
     core::PCWSTR,
     Win32::{
         Foundation::BOOL,
-        System::Threading::{OpenProcess, PROCESS_ALL_ACCESS},
+        System::{
+            Diagnostics::Debug::ReadProcessMemory,
+            Threading::{OpenProcess, PROCESS_ALL_ACCESS},
+        },
         UI::WindowsAndMessaging::{FindWindowW, GetWindowThreadProcessId},
     },
 };
@@ -29,5 +32,18 @@ fn main() {
             eprintln!("扫雷 HANDLE 获取失败, 退出助手. {}", e);
             process::exit(-2);
         }
+        let p_handle = p_handle.expect("p_handle 获取失败");
+
+        let hight_addr = 0x1005338;
+        let mut hight = 0;
+        let _ = ReadProcessMemory(
+            p_handle,
+            ptr::addr_of!(hight_addr) as *const c_void,
+            ptr::addr_of_mut!(hight) as *mut c_void,
+            size_of::<i32> as usize,
+            None,
+        );
+        // TODO hight = 0
+        println!("p_handle: {:?}, hight: {hight}", p_handle);
     }
 }
